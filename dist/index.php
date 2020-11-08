@@ -1,8 +1,12 @@
 <?php
 
-  require('httpful.phar');
+require('httpful.phar');
 
-  // variable definitions
+$debug = false;
+
+if ($debug) echo "<p>debug enabled</p>\n";
+
+// variable definitions
 
   $definitionId = 'Terms_of_Service'; // from PingDirectory
   $pingFederateHost = 'pingfederate.example.com:9031'; // hostname:engine_port
@@ -30,9 +34,13 @@
   date_default_timezone_set('UTC');
   $timestamp = date("F j, Y, g:i a");
 
+  if ($debug) echo "<p>$referenceId</p>\n";
+  if ($debug) echo "<p>$resumePath</p>\n";
+
   // reusable function to hand user back to pingfederate
 
   function handoff($pingFederateHost, $pingFederateUser, $pingFederatePass, $resumePath, $entryUUID) {
+    
     $url = "https://" . $pingFederateHost . "/ext/ref/dropoff";
 
     $response = \Httpful\Request::post($url)
@@ -122,8 +130,8 @@
     $entryUUID = "{$response->body->{'chainedattr.entryUUID'}}";
 
     if (! $entryUUID) {
-      // NONE - should not happen
-      echo "unable to translate reference id to entryuuid";
+      // NONE - should not happen.  Possible that the referenceId has expired.
+      if ($debug) echo "<p>No entryUUID returned.  Unable to proceed.</p>\n";
       exit();
     }
 
@@ -169,6 +177,14 @@
     $dataText = "{$response->body->dataText}";
     $purposeText = "{$response->body->purposeText}";
     $version = "{$response->body->version}";
+
+    if (! $titleText || ! $dataText || ! $purposeText || ! $version) {
+
+      if ($debug) echo "<p>There are no consent definitions.  Redirect to PingFederate.</p>\n";
+
+      handoff($pingFederateHost, $pingFederateUser, $pingFederatePass, $resumePath, $entryUUID);
+
+    }
 
 ?>
 <!doctype html>
